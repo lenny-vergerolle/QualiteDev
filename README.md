@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 # Development Quality - Order Flow
 
@@ -113,3 +114,6 @@ TODO
   - [@thibaud.faurie (Private GitLab)](https://gitlab.cloud0.openrichmedia.org/thibaud.faurie)
   - [@thibaud-faurie (LinkedIn)](https://www.linkedin.com/in/thibaud-faurie/)
 
+=======
+# QualiteDev
+>>>>>>> 95950b120d0f57b5e55e482cb92fe83efc70a317
