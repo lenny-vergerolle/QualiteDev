@@ -15,18 +15,44 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 /**
- * TODO: Complete Javadoc
+ * Service métier pour la mise à la retraite (retrait) de produits existants dans le registre.
+ * <p>
+ * Récupère le produit, déclenche son comportement de mise à la retraite, persiste les
+ * modifications et publie l'événement {@link ProductRetired} via le journal et l'outbox.
  */
 @ApplicationScoped
 public class RetireProductService {
 
-    @Inject
-    ProductRepository repository;
-    @Inject
-    EventLogRepository eventLog;
-    @Inject
-    OutboxRepository outbox;
+    private final ProductRepository repository;
+    private final EventLogRepository eventLog;
+    private final OutboxRepository outbox;
 
+    /**
+     * Constructeur par injection de dépendances.
+     *
+     * @param repository dépôt pour la persistance des produits
+     * @param eventLog dépôt pour le journal des événements
+     * @param outbox dépôt pour la boîte de publication des événements
+     */
+    @Inject
+    public RetireProductService(
+            ProductRepository repository,
+            EventLogRepository eventLog,
+            OutboxRepository outbox) {
+        this.repository = repository;
+        this.eventLog = eventLog;
+        this.outbox = outbox;
+    }
+
+    /**
+     * Traite la commande de mise à la retraite d'un produit existant.
+     * <p>
+     * Charge le produit depuis le dépôt, appelle sa méthode métier {@code retire()},
+     * persiste les modifications et publie l'événement de mise à la retraite.
+     *
+     * @param cmd commande contenant l'identifiant du produit à retirer
+     * @throws IllegalArgumentException si le produit n'existe pas
+     */
     @Transactional
     public void retire(RetireProductCommand cmd) throws IllegalArgumentException {
         Product product = repository.findById(cmd.productId())

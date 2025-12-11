@@ -17,16 +17,25 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 /**
- * TODO: Complete Javadoc
+ * Service métier pour la mise à jour des informations des produits existants.
+ * <p>
+ * Gère les commandes de modification du nom et de la description des produits,
+ * publie les événements correspondants via le journal et l'outbox pattern.
  */
-
 @ApplicationScoped
 public class UpdateProductService {
 
-    ProductRepository repository;
-    EventLogRepository eventLog;
-    OutboxRepository outbox;
+    private final ProductRepository repository;
+    private final EventLogRepository eventLog;
+    private final OutboxRepository outbox;
 
+    /**
+     * Constructeur par injection de dépendances.
+     *
+     * @param repository dépôt pour la persistance des produits
+     * @param eventLog dépôt pour le journal des événements
+     * @param outbox dépôt pour la boîte de publication des événements
+     */
     @Inject
     public UpdateProductService(
         ProductRepository repository,
@@ -38,6 +47,15 @@ public class UpdateProductService {
         this.outbox = outbox;
     }
 
+    /**
+     * Traite la commande de mise à jour du nom d'un produit.
+     * <p>
+     * Charge le produit, met à jour son nom via la méthode métier, persiste les
+     * modifications et publie l'événement {@link ProductNameUpdated}.
+     *
+     * @param cmd commande contenant l'ID du produit et le nouveau nom
+     * @throws IllegalArgumentException si le produit n'existe pas
+     */
     @Transactional
     public void handle(UpdateProductNameCommand cmd) throws IllegalArgumentException {
         Product product = repository.findById(cmd.productId())
@@ -55,6 +73,15 @@ public class UpdateProductService {
         );
     }
 
+    /**
+     * Traite la commande de mise à jour de la description d'un produit.
+     * <p>
+     * Charge le produit, met à jour sa description via la méthode métier, persiste
+     * les modifications et publie l'événement {@link ProductDescriptionUpdated}.
+     *
+     * @param cmd commande contenant l'ID du produit et la nouvelle description
+     * @throws IllegalArgumentException si le produit n'existe pas
+     */
     @Transactional
     public void handle(UpdateProductDescriptionCommand cmd) throws IllegalArgumentException {
         Product product = repository.findById(cmd.productId())

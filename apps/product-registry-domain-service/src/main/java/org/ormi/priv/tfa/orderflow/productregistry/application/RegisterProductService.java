@@ -16,16 +16,26 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 /**
- * TODO: Complete Javadoc
+ * Service métier pour l'enregistrement de nouveaux produits dans le registre.
+ * <p>
+ * Gère la création d'un produit via une commande, vérifie l'unicité du SKU,
+ * persiste l'entité domaine, publie l'événement {@link ProductRegistered} dans
+ * le journal d'événements et le met dans la boîte de publication (outbox pattern).
  */
-
 @ApplicationScoped
 public class RegisterProductService {
 
-    ProductRepository repository;
-    EventLogRepository eventLog;
-    OutboxRepository outbox;
+    private final ProductRepository repository;
+    private final EventLogRepository eventLog;
+    private final OutboxRepository outbox;
 
+    /**
+     * Constructeur par injection de dépendances.
+     *
+     * @param repository dépôt pour la persistance des produits
+     * @param eventLog dépôt pour le journal des événements
+     * @param outbox dépôt pour la boîte de publication des événements
+     */
     @Inject
     public RegisterProductService(
         ProductRepository repository,
@@ -37,6 +47,16 @@ public class RegisterProductService {
         this.outbox = outbox;
     }
 
+    /**
+     * Traite la commande d'enregistrement d'un nouveau produit.
+     * <p>
+     * Vérifie l'unicité du SKU, crée le produit, le persiste, publie l'événement
+     * de création et le met dans l'outbox pour publication asynchrone.
+     *
+     * @param cmd commande contenant les informations du produit à créer
+     * @return identifiant unique du produit créé
+     * @throws IllegalArgumentException si un produit avec le même SKU existe déjà
+     */
     @Transactional
     public ProductId handle(RegisterProductCommand cmd) throws IllegalArgumentException {
         if (repository.existsBySkuId(cmd.skuId())) {
