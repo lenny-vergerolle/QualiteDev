@@ -26,13 +26,10 @@ S représente le type de table de lecture (ProductView, OrderView, StatsView, et
 Une seule transaction sauvegarde les données métier ET l'événement. Même si le service plante après, le polleur relira l'événement.
 
 ### Flux concret
-```
-1. Command → Product.create() → événement
-2. Transaction : DB métier + Outbox + EventLog
-3. Polleur lit Outbox toutes les secondes
-4. Projection → ProductViewRepository.save()
-5. Outbox.delete() si OK, sinon retry
-```
+
+Diagramme de séquence
+ 
+![alt text](outbox_pattern_sequence.png)
 
 ### Gestion des erreurs
 - `attempts` : Nombre d'essais
