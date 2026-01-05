@@ -8,9 +8,19 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * TODO: Complete Javadoc
+ * DTO complet de vue produit (Read Model) pour API REST v1.
+ *
+ * <p>Projection CQRS avec historique événements et références catalogues.
+ * Polymorphisme Jackson sur payloads événements (@JsonTypeInfo).</p>
+ *
+ * <h3>Structure hiérarchique</h3>
+ * <ul>
+ *   <li>ProductViewDto (root)</li>
+ *   <li>↳ ProductViewDtoEvent[] (historique)</li>
+ *   <li>↳ ProductViewDtoCatalog[] (refs catalogues)</li>
+ *   <li>↳ ProductViewEventDtoPayload (polymorphique)</li>
+ * </ul>
  */
-
 public record ProductViewDto(
         String id,
         String skuId,
@@ -22,36 +32,59 @@ public record ProductViewDto(
         String createdAt,
         String updatedAt) {
 
+    /**
+     * Référence catalogue (léger).
+     */
     public static record ProductViewDtoCatalog(
             String id,
             String name) {
     }
 
-    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+    /**
+     * Payloads polymorphiques des événements (Jackson sealed interface).
+     *
+     * <p>@JsonTypeInfo discrimine par "type" → concrete payload.</p>
+     */
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, 
+                  include = JsonTypeInfo.As.PROPERTY, 
+                  property = "type")
     @JsonSubTypes({
         @JsonSubTypes.Type(value = ProductViewEventDtoPayload.ProductRegisteredPayloadDto.class, name = "ProductRegistered"),
         @JsonSubTypes.Type(value = ProductViewEventDtoPayload.ProductNameUpdatedPayloadDto.class, name = "ProductNameUpdated"),
         @JsonSubTypes.Type(value = ProductViewEventDtoPayload.ProductDescriptionUpdatedPayloadDto.class, name = "ProductDescriptionUpdated"),
         @JsonSubTypes.Type(value = ProductViewEventDtoPayload.ProductRetiredPayloadDto.class, name = "ProductRetired")
     })
-    public sealed interface ProductViewEventDtoPayload {
-        public record ProductRegisteredPayloadDto(
+    public sealed interface ProductViewEventDtoPayload 
+            permits ProductRegisteredPayloadDto, ProductNameUpdatedPayloadDto, 
+                    ProductDescriptionUpdatedPayloadDto, ProductRetiredPayloadDto {
+        
+        /** Enregistrement produit */
+        record ProductRegisteredPayloadDto(
                 String skuId,
                 String name,
                 String description) implements ProductViewEventDtoPayload {
         }
-        public record ProductNameUpdatedPayloadDto(
+        
+        /** Mise à jour nom (old/new) */
+        record ProductNameUpdatedPayloadDto(
                 String oldName,
                 String newName) implements ProductViewEventDtoPayload {
         }
-        public record ProductDescriptionUpdatedPayloadDto(
+        
+        /** Mise à jour description (old/new) */
+        record ProductDescriptionUpdatedPayloadDto(
                 String oldDescription,
                 String newDescription) implements ProductViewEventDtoPayload {
         }
-        public record ProductRetiredPayloadDto() implements ProductViewEventDtoPayload {
+        
+        /** Retraite produit (empty payload) */
+        record ProductRetiredPayloadDto() implements ProductViewEventDtoPayload {
         }
     }
 
+    /**
+     * Événement avec type + sequence + payload polymorphique.
+     */
     public static record ProductViewDtoEvent(
             ProductViewDtoEventType type,
             String timestamp,
@@ -59,6 +92,11 @@ public record ProductViewDto(
             ProductViewEventDtoPayload payload) {
     }
 
+    /**
+     * Types d'événements (bi-directionnel JSON ↔ enum).
+     *
+     * <p>@JsonValue/@JsonCreator pour sérialisation custom.</p>
+     */
     public static enum ProductViewDtoEventType {
         REGISTERED("ProductRegistered"),
         NAME_UPDATED("ProductNameUpdated"),

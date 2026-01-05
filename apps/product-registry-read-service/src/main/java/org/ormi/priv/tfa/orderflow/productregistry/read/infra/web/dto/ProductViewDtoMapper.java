@@ -28,63 +28,100 @@ import org.ormi.priv.tfa.orderflow.kernel.product.views.ProductView.ProductViewC
 import org.ormi.priv.tfa.orderflow.kernel.product.views.ProductView.ProductViewEvent;
 
 /**
- * TODO: Complete Javadoc
+ * Mapper MapStruct Domain → REST DTO (ProductView → ProductViewDto v1).
+ *
+ * <p>Hiérarchie imbriquée de mappers pour gérer :
+ * <ul>
+ *   <li>ProductView → ProductViewDto</li>
+ *   <li>ProductViewEvent → ProductViewDtoEvent + payloads polymorphiques</li>
+ *   <li>ProductViewCatalogRef → ProductViewDtoCatalog</li>
+ *   <li>ProductEventType → ProductViewDtoEventType (@ValueMappings)</li>
+ * </ul></p>
+ *
+ * <h3>Pattern clé : Dispatcher polymorphique</h3>
+ * <p>Pour interface→interface : <code>DomainEventPayload → ProductViewEventDtoPayload</code></p>
  */
-
-@Mapper(componentModel = "cdi", builder = @Builder(disableBuilder = false), uses = {
-        ProductIdMapper.class,
-        SkuIdMapper.class,
-        ProductViewDtoMapper.ProductViewDtoEventMapper.class,
-        ProductViewDtoMapper.ProductViewDtoCatalogMapper.class
-}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "cdi", 
+        builder = @Builder(disableBuilder = false), 
+        uses = {
+            ProductIdMapper.class,
+            SkuIdMapper.class,
+            ProductViewDtoMapper.ProductViewDtoEventMapper.class,
+            ProductViewDtoMapper.ProductViewDtoCatalogMapper.class
+        }, 
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ProductViewDtoMapper {
-    public ProductViewDto toDto(ProductView productView);
+    
+    /**
+     * Mapping principal : Domain → REST DTO.
+     */
+    ProductViewDto toDto(ProductView productView);
 
-    @Mapper(componentModel = "cdi", builder = @Builder(disableBuilder = false), unmappedTargetPolicy = ReportingPolicy.IGNORE, uses = {
-            ProductEventTypeMapper.class, ProductViewDtoEventMapper.ProductViewDtoPayloadMapper.class
-    })
-    public interface ProductViewDtoEventMapper {
+    /**
+     * Mapper imbriqué : événements avec payloads polymorphiques.
+     */
+    @Mapper(componentModel = "cdi", 
+            builder = @Builder(disableBuilder = false), 
+            unmappedTargetPolicy = ReportingPolicy.IGNORE, 
+            uses = {
+                ProductEventTypeMapper.class, 
+                ProductViewDtoEventMapper.ProductViewDtoPayloadMapper.class
+            })
+    interface ProductViewDtoEventMapper {
+        
+        /**
+         * ProductViewEvent → ProductViewDtoEvent (avec type + payload).
+         */
         ProductViewDtoEvent toDto(ProductViewEvent event);
 
+        /**
+         * Mapper imbriqué : dispatch payloads polymorphiques.
+         */
         @Mapper(componentModel = "cdi", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-        public interface ProductViewDtoPayloadMapper {
+        interface ProductViewDtoPayloadMapper {
+            
             ProductRegisteredPayloadDto toDto(ProductRegisteredPayload payload);
-
             ProductNameUpdatedPayloadDto toDto(ProductNameUpdatedPayload payload);
-
             ProductDescriptionUpdatedPayloadDto toDto(ProductDescriptionUpdatedPayload payload);
-
             ProductRetiredPayloadDto toDto(Empty payload);
 
-            // 👇 Dispatcher for MapStruct (handles interface→interface)
+            /**
+             * 👇 DISPATCHER polymorphique (interface → interface)
+             * MapStruct génère un switch pattern matching.
+             */
             default ProductViewEventDtoPayload map(DomainEventPayload payload) {
-                if (payload == null)
-                    return null;
-                if (payload instanceof ProductRegisteredPayload p)
-                    return toDto(p);
-                if (payload instanceof ProductNameUpdatedPayload p)
-                    return toDto(p);
-                if (payload instanceof ProductDescriptionUpdatedPayload p)
-                    return toDto(p);
-                if (payload instanceof ProductEventV1Payload.Empty p)
-                    return toDto(p);
+                if (payload == null) return null;
+                if (payload instanceof ProductRegisteredPayload p) return toDto(p);
+                if (payload instanceof ProductNameUpdatedPayload p) return toDto(p);
+                if (payload instanceof ProductDescriptionUpdatedPayload p) return toDto(p);
+                if (payload instanceof ProductEventV1Payload.Empty p) return toDto(p);
                 throw new IllegalArgumentException("Unknown payload type: " + payload.getClass());
             }
         }
     }
 
-    @Mapper(componentModel = "cdi", builder = @Builder(disableBuilder = false), unmappedTargetPolicy = ReportingPolicy.IGNORE)
-    public interface ProductViewDtoCatalogMapper {
+    /**
+     * Mapper catalogues (simple record → record).
+     */
+    @Mapper(componentModel = "cdi", 
+            builder = @Builder(disableBuilder = false), 
+            unmappedTargetPolicy = ReportingPolicy.IGNORE)
+    interface ProductViewDtoCatalogMapper {
         ProductViewDtoCatalog toDto(ProductViewCatalogRef catalog);
     }
 
-    @Mapper(componentModel = "cdi", builder = @Builder(disableBuilder = false), unmappedTargetPolicy = ReportingPolicy.IGNORE)
-    public interface ProductEventTypeMapper {
+    /**
+     * Mapper enum ProductEventType → ProductViewDtoEventType.
+     */
+    @Mapper(componentModel = "cdi", 
+            builder = @Builder(disableBuilder = false), 
+            unmappedTargetPolicy = ReportingPolicy.IGNORE)
+    interface ProductEventTypeMapper {
         @ValueMappings({
-                @ValueMapping(source = "PRODUCT_REGISTERED", target = "REGISTERED"),
-                @ValueMapping(source = "PRODUCT_NAME_UPDATED", target = "NAME_UPDATED"),
-                @ValueMapping(source = "PRODUCT_DESCRIPTION_UPDATED", target = "DESCRIPTION_UPDATED"),
-                @ValueMapping(source = "PRODUCT_RETIRED", target = "RETIRED")
+            @ValueMapping(source = "PRODUCT_REGISTERED", target = "REGISTERED"),
+            @ValueMapping(source = "PRODUCT_NAME_UPDATED", target = "NAME_UPDATED"),
+            @ValueMapping(source = "PRODUCT_DESCRIPTION_UPDATED", target = "DESCRIPTION_UPDATED"),
+            @ValueMapping(source = "PRODUCT_RETIRED", target = "RETIRED")
         })
         ProductViewDtoEventType toDto(ProductEventType event);
     }

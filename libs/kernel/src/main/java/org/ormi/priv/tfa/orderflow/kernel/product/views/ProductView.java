@@ -16,45 +16,39 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 /**
- * TODO: Complete Javadoc
+ * Vue complète produit (Read Model - Projection CQRS).
+ *
+ * <p>Denormalized + historique événements + refs catalogues.
+ * Immutable + validée + Builder fluide (.with() pour mutations projectées).</p>
+ *
+ * <h3>Contenu</h3>
+ * <table>
+ *   <tr><th>Champs</th><th>Description</th></tr>
+ *   <tr><td>version</td><td>Optimistic concurrency</td></tr>
+ *   <tr><td>events[]</td><td>Historique complet (audit)</td></tr>
+ *   <tr><td>catalogs[]</td><td>Références catalogues</td></tr>
+ * </table>
  */
-
 @Getter
 public class ProductView {
     
-    @NotNull
-    private final ProductId id;
-    @NotNull
-    private final Long version;
-    @NotNull
-    private final SkuId skuId;
-    @NotBlank
-    private final String name;
-    @NotNull
-    private final String description;
-    @NotNull
-    private final ProductLifecycle status;
-    @NotNull
-    private final List<ProductViewCatalogRef> catalogs;
-    @NotNull
-    private final List<ProductViewEvent> events;
-    @NotNull
-    private final Instant createdAt;
-    @NotNull
-    private final Instant updatedAt;
+    @NotNull private final ProductId id;
+    @NotNull private final Long version;
+    @NotNull private final SkuId skuId;
+    @NotBlank private final String name;
+    @NotNull private final String description;
+    @NotNull private final ProductLifecycle status;
+    @NotNull private final List<ProductViewCatalogRef> catalogs;
+    @NotNull private final List<ProductViewEvent> events;
+    @NotNull private final Instant createdAt;
+    @NotNull private final Instant updatedAt;
 
-    private ProductView(
-        ProductId id,
-        Long version,
-        SkuId skuId,
-        String name,
-        String description,
-        ProductLifecycle status,
-        List<ProductViewCatalogRef> catalogs,
-        List<ProductViewEvent> events,
-        Instant createdAt,
-        Instant updatedAt
-    ) {
+    /**
+     * Constructeur privé (Builder uniquement).
+     */
+    private ProductView(ProductId id, Long version, SkuId skuId, String name, String description,
+            ProductLifecycle status, List<ProductViewCatalogRef> catalogs,
+            List<ProductViewEvent> events, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.version = version;
         this.skuId = skuId;
@@ -67,10 +61,16 @@ public class ProductView {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * Builder fluide (.with() pour projection incrémentale).
+     */
     public static ProductViewBuilder Builder() {
         return new ProductViewBuilder();
     }
 
+    /**
+     * Builder avec copy + overrides.
+     */
     public static final class ProductViewBuilder {
         private ProductId id;
         private Long version;
@@ -83,56 +83,20 @@ public class ProductView {
         private Instant createdAt;
         private Instant updatedAt;
 
-        public ProductViewBuilder id(ProductId id) {
-            this.id = id;
-            return this;
-        }
+        public ProductViewBuilder id(ProductId id) { this.id = id; return this; }
+        public ProductViewBuilder version(Long version) { this.version = version; return this; }
+        public ProductViewBuilder skuId(SkuId skuId) { this.skuId = skuId; return this; }
+        public ProductViewBuilder name(String name) { this.name = name; return this; }
+        public ProductViewBuilder description(String description) { this.description = description; return this; }
+        public ProductViewBuilder status(ProductLifecycle status) { this.status = status; return this; }
+        public ProductViewBuilder catalogs(List<ProductViewCatalogRef> catalogs) { this.catalogs = catalogs; return this; }
+        public ProductViewBuilder events(List<ProductViewEvent> events) { this.events = events; return this; }
+        public ProductViewBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public ProductViewBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
-        public ProductViewBuilder version(Long version) {
-            this.version = version;
-            return this;
-        }
-
-        public ProductViewBuilder skuId(SkuId skuId) {
-            this.skuId = skuId;
-            return this;
-        }
-
-        public ProductViewBuilder name(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public ProductViewBuilder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public ProductViewBuilder status(ProductLifecycle status) {
-            this.status = status;
-            return this;
-        }
-
-        public ProductViewBuilder catalogs(List<ProductViewCatalogRef> catalogs) {
-            this.catalogs = catalogs;
-            return this;
-        }
-
-        public ProductViewBuilder events(List<ProductViewEvent> events) {
-            this.events = events;
-            return this;
-        }
-
-        public ProductViewBuilder createdAt(Instant createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public ProductViewBuilder updatedAt(Instant updatedAt) {
-            this.updatedAt = updatedAt;
-            return this;
-        }
-
+        /**
+         * Copy depuis vue existante (projection incrémentale).
+         */
         public ProductViewBuilder with(ProductView view) {
             this.id = view.id;
             this.version = view.version;
@@ -147,8 +111,12 @@ public class ProductView {
             return this;
         }
 
+        /**
+         * Build + validation complète.
+         */
         public ProductView build() throws ConstraintViolationException {
-            ProductView view = new ProductView(id, version, skuId, name, description, status, catalogs, events, createdAt, updatedAt);
+            ProductView view = new ProductView(id, version, skuId, name, description, status, 
+                catalogs, events, createdAt, updatedAt);
             final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
             final var violations = validator.validate(view);
             if (!violations.isEmpty()) {
@@ -158,11 +126,12 @@ public class ProductView {
         }
     }
 
+    /**
+     * Référence catalogue légère.
+     */
     public static class ProductViewCatalogRef {
-        @NotNull
-        private final ProductId id;
-        @NotNull
-        private final String name;
+        @NotNull private final ProductId id;
+        @NotNull private final String name;
 
         public ProductViewCatalogRef(ProductId id, String name) {
             this.id = id;
@@ -170,18 +139,18 @@ public class ProductView {
         }
     }
 
+    /**
+     * Événement projeté (historique audit).
+     */
     @Getter
     public static class ProductViewEvent {
-        @NotNull
-        private final ProductEventType type;
-        @NotNull
-        private final Instant timestamp;
-        @NotNull
-        private final Long sequence;
-        @NotNull
-        private final ProductEventV1Payload payload;
+        @NotNull private final ProductEventType type;
+        @NotNull private final Instant timestamp;
+        @NotNull private final Long sequence;
+        @NotNull private final ProductEventV1Payload payload;
 
-        public ProductViewEvent(ProductEventType type, Instant timestamp, Long sequence, ProductEventV1Payload payload) {
+        public ProductViewEvent(ProductEventType type, Instant timestamp, Long sequence, 
+                               ProductEventV1Payload payload) {
             this.type = type;
             this.timestamp = timestamp;
             this.sequence = sequence;

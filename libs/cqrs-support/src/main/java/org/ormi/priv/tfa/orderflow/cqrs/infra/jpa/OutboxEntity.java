@@ -18,36 +18,68 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * TODO: Complete Javadoc
+ * Entité JPA Transactional Outbox (Dual Write Pattern).
+ *
+ * <p>Table de file d'attente pour événements à propager (reliable delivery).
+ * Liée 1:N à {@link EventLogEntity} (sourceEvent FK).</p>
+ *
+ * <h3>Table eventing.outbox</h3>
+ * <ul>
+ *   <li>Index next_attempt_at : polling efficace</li>
+ *   <li>ManyToOne EAGER : dénormalisé (event payload)</li>
+ * </ul>
+ *
+ * <h3>États</h3>
+ * <table>
+ *   <tr><th>Status</th><th>Action</th></tr>
+ *   <tr><td>nextAttemptAt <= now() && attempts < max</td><td>process</td></tr>
+ *   <tr><td>success</td><td>DELETE</td></tr>
+ *   <tr><td>failed</td><td>UPDATE nextAttemptAt + attempts++</td></tr>
+ * </table>
  */
-
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Entity
-@Table(schema = "eventing", name = "outbox", indexes = {
-        @Index(name = "ix_outbox_ready", columnList = "next_attempt_at")
-})
+@Table(schema = "eventing", 
+       name = "outbox", 
+       indexes = {
+           @Index(name = "ix_outbox_ready", columnList = "next_attempt_at")
+       })
 public class OutboxEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    
+    /** ID auto-incrémenté */
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false, columnDefinition = "bigserial")
     private Long id;
+    
+    /** Nombre tentatives livraison */
     @Column(name = "attempts", nullable = false, updatable = false, columnDefinition = "int")
     private int attempts;
+    
+    /** Prochaine tentative (indexé) */
     @Column(name = "next_attempt_at", nullable = false, updatable = false, columnDefinition = "timestamptz")
     private Instant nextAttemptAt;
+    
+    /** Dernière erreur (pour retry/debug) */
     @Column(name = "last_error", nullable = false, updatable = false, columnDefinition = "text")
     private String lastError;
 
+    /** Événement source (FK → EventLogEntity, EAGER) */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "event_id", nullable = false, updatable = false, columnDefinition = "bigint")
     private EventLogEntity sourceEvent;
 
+    /**
+     * Builder fluide (Lombok-free).
+     */
     public static OutboxEntityBuilder Builder() {
         return new OutboxEntityBuilder();
     }
 
+    /**
+     * Builder interne (immutable → mutable → immutable).
+     */
     public static class OutboxEntityBuilder {
         private EventLogEntity sourceEvent;
 

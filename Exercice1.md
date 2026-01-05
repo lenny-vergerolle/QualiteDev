@@ -116,4 +116,3 @@ Code Java : Violations de conventions Quarkus (nommage, structure de packages), 
 
 Configuration recommandée : Activez les linters Java (PMD, Checkstyle, SpotBugs) tout en désactivant les linters Repository pour éviter les faux positifs liés à la gestion Git. 
 
-# Exercice 2

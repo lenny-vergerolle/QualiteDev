@@ -28,22 +28,37 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response.Status;
 
 /**
- * TODO: Complete Javadoc
+ * API RPC/Proxy vers Product Registry (Store → Registry).
+ *
+ * <p>Facade POST-only pour orchestrer les appels REST clients vers :
+ * <ul>
+ *   <li>ProductRegistryService (read)</li>
+ *   <li>ProductRegistryDomainService (write/CQRS commands)</li>
+ * </ul></p>
+ *
+ * <h3>Pattern : POST Resource Pattern</h3>
+ * <p>Tous les endpoints POST (même GET-like) pour uniformité + body validation.</p>
+ *
+ * <h3>Clients injectés (@RestClient)</h3>
+ * <table>
+ *   <tr><th>Client</th><th>Usage</th></tr>
+ *   <tr><td>ProductRegistryService</td><td>Read (view/search)</td></tr>
+ *   <tr><td>ProductRegistryDomainService</td><td>Write (commands)</td></tr>
+ * </table>
  */
-
 @Path("/products")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProductRpcResource {
 
-    @Inject
-    @RestClient
-    private ProductRegistryService productRegistryService;
-    @Inject
-    @RestClient
-    private ProductRegistryDomainService productRegistryDomainService;
+    @Inject @RestClient private ProductRegistryService productRegistryService;
+    @Inject @RestClient private ProductRegistryDomainService productRegistryDomainService;
 
-    @POST
-    @Path("/registerProduct")
+    /**
+     * Enregistrement produit (Command → Domain Service).
+     *
+     * <pre>POST /products/registerProduct</pre>
+     */
+    @POST @Path("/registerProduct")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestResponse<Void> registerProduct(RegisterProductCommandDto product) {
         final var res = productRegistryDomainService.registerProduct(product);
@@ -54,8 +69,14 @@ public class ProductRpcResource {
         }
     }
 
-    @POST
-    @Path("/updateProduct")
+    /**
+     * Mise à jour multiple (batch operations) → fan-out parallèle.
+     *
+     * <p>Supporte UPDATE_NAME + UPDATE_DESCRIPTION en parallèle (Mutiny Uni.combine).</p>
+     *
+     * <pre>POST /products/updateProduct</pre>
+     */
+    @POST @Path("/updateProduct")
     @Consumes(MediaType.APPLICATION_JSON)
     @Blocking
     public Uni<RestResponse<Void>> updateProduct(UpdateProductDto update) {
@@ -68,21 +89,19 @@ public class ProductRpcResource {
 
         List<Uni<RestResponse<?>>> ops = new ArrayList<>();
 
-        for (var op: update.operations()) {
+        for (var op : update.operations()) {
             switch (op.type()) {
                 case UPDATE_NAME -> {
                     var nameOp = (UpdateProductDto.UpdateNameOperation) op;
                     ops.add(Uni.createFrom().item(
                         productRegistryDomainService.updateProductName(update.id(),
-                            new UpdateProductNameParamsDto(nameOp.payload().name()))
-                    ));
+                            new UpdateProductNameParamsDto(nameOp.payload().name()))));
                 }
                 case UPDATE_DESCRIPTION -> {
                     var descOp = (UpdateProductDto.UpdateDescriptionOperation) op;
                     ops.add(Uni.createFrom().item(
                         productRegistryDomainService.updateProductDescription(update.id(),
-                            new UpdateProductDescriptionParamsDto(descOp.payload().description()))
-                    ));
+                            new UpdateProductDescriptionParamsDto(descOp.payload().description()))));
                 }
             }
         }
@@ -95,62 +114,68 @@ public class ProductRpcResource {
             boolean allOk = results.stream()
                 .map(r -> ((RestResponse<?>) r).getStatus())
                 .allMatch(status -> status == Status.NO_CONTENT.getStatusCode());
-            if (allOk) {
-                return RestResponse.ok();
-            } else {
-                return RestResponse.status(Status.INTERNAL_SERVER_ERROR);
-            }
+            return allOk ? RestResponse.ok() : RestResponse.status(Status.INTERNAL_SERVER_ERROR);
         });
     }
 
-    @POST
-    @Path("/retireProduct")
+    /**
+     * Retraite produit (Command → Domain Service).
+     *
+     * <pre>POST /products/retireProduct</pre>
+     */
+    @POST @Path("/retireProduct")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestResponse<Void> retireProduct(RetireProductDto retire) {
         if (retire.id() == null || retire.id().isEmpty()) {
             return RestResponse.status(Status.BAD_REQUEST);
         }
         final var res = productRegistryDomainService.retireProduct(retire.id());
-        if (res.getStatus() == Status.NO_CONTENT.getStatusCode()) {
-            return RestResponse.ok();
-        } else {
-            return RestResponse.status(Status.INTERNAL_SERVER_ERROR);
-        }
+        return res.getStatus() == Status.NO_CONTENT.getStatusCode() 
+            ? RestResponse.ok() 
+            : RestResponse.status(Status.INTERNAL_SERVER_ERROR);
     }
 
-    @POST
-    @Path("/viewProduct")
+    /**
+     * Consultation produit (Query → Read Service).
+     *
+     * <pre>POST /products/viewProduct</pre>
+     */
+    @POST @Path("/viewProduct")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestResponse<ProductViewDto> viewProduct(ViewProductDto view) {
         if (view.id() == null || view.id().isEmpty()) {
             return RestResponse.status(Status.BAD_REQUEST);
         }
         final var res = productRegistryService.getProductById(view.id());
-        if (res.getStatus() == Status.OK.getStatusCode()) {
-            return RestResponse.ok(res.getEntity());
-        } else {
-            return RestResponse.status(Status.INTERNAL_SERVER_ERROR);
-        }
+        return res.getStatus() == Status.OK.getStatusCode() 
+            ? RestResponse.ok(res.getEntity()) 
+            : RestResponse.status(Status.INTERNAL_SERVER_ERROR);
     }
 
-    @POST
-    @Path("/searchProducts")
+    /**
+     * Recherche paginée (Query → Read Service).
+     *
+     * <pre>POST /products/searchProducts</pre>
+     */
+    @POST @Path("/searchProducts")
     @Consumes(MediaType.APPLICATION_JSON)
     public RestResponse<PaginatedProductListDto> searchProducts(SearchProductsDto search) {
         final var res = productRegistryService.searchProducts(search.sku(), search.page(), search.size());
-        if (res.getStatus() == Status.OK.getStatusCode()) {
-            return RestResponse.ok(res.getEntity());
-        } else {
-            return RestResponse.status(Status.INTERNAL_SERVER_ERROR);
-        }
+        return res.getStatus() == Status.OK.getStatusCode() 
+            ? RestResponse.ok(res.getEntity()) 
+            : RestResponse.status(Status.INTERNAL_SERVER_ERROR);
     }
 
-    // TODO: implement [Exercice 5]
-    // @GET
-    // @Path("/{id}/streamProductEvents")
+    /**
+     * TODO: implement [Exercice 5]
+     * Streaming SSE événements produit (Query → Read Service).
+     *
+     * <pre>GET /products/{id}/streamProductEvents</pre>
+     */
+    // @GET @Path("/{id}/streamProductEvents")
     // @Produces(MediaType.SERVER_SENT_EVENTS)
     // @RestStreamElementType(MediaType.APPLICATION_JSON)
-    // public Multi<ProductStreamElementDto> streamProductEventsById(@QueryParam("id") String id) {
-    //     throw new UnsupportedOperationException("TODO: implement [Exercice 5]");
+    // public Multi<ProductStreamElementDto> streamProductEventsById(@PathParam("id") String id) {
+    //     return productRegistryService.streamProductEventsById(id);
     // }
 }
