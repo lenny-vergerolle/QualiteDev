@@ -1,17 +1,16 @@
-# Tâche 5 - Réponses (étudiant)
+# Tâche 5
 
 ## Question 1 : Tests unitaires vs intégration
 
-**Tests unitaires** : on teste UNE classe/méthode en mockant tout (repos, services). L'idée c'est d'être rapide et isolé.
+Tests unitaires : on teste une classe/méthode en mockant tout (repos, services). L'idée c'est d'être rapide et isolé.
 - Ex: `Product.updateName()` sans toucher la DB.
 
-**Tests intégration** : on teste vraiment les interactions (DB réelle avec TestContainers, API externes, etc.). Plus lent mais plus réaliste.
+Tests intégration : on teste vraiment les interactions (DB réelle avec TestContainers, API externes, etc.). Plus lent mais plus réaliste.
 
 ## Question 2 : Couverture 100% ?
 
-Non, c'est useless voire nuisible.
-
-**Pourquoi ?**
+Non, c'est inutile voire nuisible.
+car
 - 80% du code c'est du boilerplate (getters, mappers) → pas de valeur business
 - Focus sur chemins critiques : guards métier (`canUpdateDetails()`), business logic
 - Mutation testing >> coverage % (tue les mutants, pas les lignes)

@@ -9,7 +9,7 @@ Les principaux domaines métiers de l'application Order flow sont le panier d'ac
 
 ### 2. Comment les services sont-ils conçus pour implémenter les domaines métiers ?
 
-Les services sont conçus en suivant le principe de séparation des responsabilités . Chaque service est responsable d'un domaine métier précis. Par exemple, il peut y avoir un service dédié à la gestion du panier d'achat et un autre service pour le traitement des commandes. Chaque service encapsule la logique métier, les règles de validation et les interactions avec la base de données liées à son domaine.
+Les services sont conçus en suivant le principe de séparation des responsabilités . Chaque service est responsable d'un domaine métier précis. Par exemple, il peut y avoir un service responsable à la gestion du panier d'achat et un autre service pour le traitement des commandes. Chaque service encapsule la logique métier, les règles de validation et les interactions avec la base de données liées à son domaine.
 
 ### 3. Quelles sont les responsabilités des modules :
 
@@ -45,12 +45,6 @@ Domain-Driven Design (DDD) : Organisation en bounded contexts avec des agrégats
 
 Architecture Event-Driven (EDA) : Les événements métiers servent à propager les changements d'état entre les services de manière asynchrone    ​
 
-Gestion des données et transactions : L'event store persiste les événements de domaine en tant qu'append-only log, et les agrégats reconstituent leur état en rejouant ces événements. Les transactions sont limitées aux frontières des agrégats pour garantir la cohérence forte localement.
-
-Gestion des erreurs : Les erreurs métier sont représentées par des événements de domaine spécifiques, tandis que les erreurs techniques sont gérées par des mécanismes de retry et de compensation.
-
-Échanges entre services : Les services communiquent principalement par événements asynchrones publiés dans l'event store, avec des projections pour construire les vues en lecture.
-
 2. Comment les concepts principaux sont-ils implémentés dans les différents modules ?
 
 libs/cqrs-support : Fournit l'infrastructure pour le pattern CQRS, incluant la gestion des commandes, des requêtes, des projections (vues matérialisées) et du journal d'événements. Ce module abstrait la complexité du CQRS et de l'Event Sourcing.
@@ -63,11 +57,8 @@ apps/product-registry-read-service : Implémente le côté lecture (read model) 
 
 libs/sql : Fournit l'abstraction pour la persistance relationnelle, notamment pour stocker les événements et les projections avec gestion transactionnelle.
 
-​
-
 libs/bom-platform : Gère les dépendances partagées (Bill of Materials) pour assurer la cohérence des versions des bibliothèques à travers tous les modules du projet.
 
-​
 
 Les standards de codage suivent les conventions Quarkus avec camelCase pour méthodes/variables, PascalCase pour classes, et injection de dépendances via CDI.
 
@@ -75,7 +66,6 @@ Les standards de codage suivent les conventions Quarkus avec camelCase pour mét
 3. Que fait la bibliothèque libs/cqrs-support ? Comment est-elle utilisée ?
 
 libs/cqrs-support implémente le pattern CQRS en fournissant :
-
 
 Command handlers : Traitent les commandes métier et coordonnent les modifications d'agrégats
 
@@ -104,7 +94,8 @@ Les événements immuables dans l'event store constituent l'unique source fiable
 L'état actuel d'un agrégat peut être reconstruit à tout moment en rejouant sa séquence d'événements, assurant l'audit et la résilience
 
 
-Tâche 3 : Identifier les problèmes de qualité
+
+### Tâche 3 : Identifier les problèmes de qualité
 
 Pour identifier les problèmes de qualité avec MegaLinter, voici les principaux aspects à analyser après configuration :
 

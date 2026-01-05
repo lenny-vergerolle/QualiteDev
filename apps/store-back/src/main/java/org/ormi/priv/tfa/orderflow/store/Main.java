@@ -5,7 +5,16 @@ import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
 
 /**
- * TODO: Complete Javadoc
+ * Point d'entrée principal pour l'application Order Flow Store.
+ * 
+ * Cette classe initialise et exécute une application Quarkus qui gère le domaine du registre des produits.
+ * Elle utilise le framework Quarkus pour démarrer et gérer le cycle de vie de l'application.
+ * 
+ * <p>L'application commence par exécuter la {@link ProductRegistryDomainApplication}
+ * qui implémente {@link QuarkusApplication} et attend que l'application se termine.</p>
+ * 
+ * @version 1.0
+ * @since 1.0
  */
 
 @QuarkusMain
